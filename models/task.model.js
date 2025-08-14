@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
+const User = require("./user.model");
 
 const Task = sequelize.define(
   "Task",
@@ -19,6 +20,10 @@ const Task = sequelize.define(
     },
     status: {
       type: DataTypes.BOOLEAN,
+      allowNull: false,
+    },
+    userId: {
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
   },

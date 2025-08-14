@@ -1,76 +1,93 @@
-const { where } = require("sequelize");
-const Task = require("../models/task.model");
+const { Task } = require("../models");
+
+const sendResponse = (res, statusCode, success, message, data = null) => {
+  return res.status(statusCode).json({ success, message, data });
+};
 
 const createTaskController = async (req, res) => {
   try {
     const { title, description, status } = req.body;
-    if (!title) {
-      res.status(400).json({ message: "Title is missing" });
-    }
-    if (!description) {
-      res.status(400).json({ message: "Description is missing" });
-    }
-    const task = await Task.create({ title, description, status });
-    console.log(task);
-    res.status(200).json({ message: "Task created successfully", task });
+    const userId = req.user.id;
+
+    if (!title) return sendResponse(res, 400, false, "Title is required");
+    if (!description)
+      return sendResponse(res, 400, false, "Description is required");
+
+    const task = await Task.create({ title, description, status, userId });
+    return sendResponse(res, 201, true, "Task created successfully", task);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return sendResponse(res, 500, false, error.message);
   }
 };
 
 const getAllTasksController = async (req, res) => {
   try {
-    const allTasks = await Task.findAll();
-    res.status(200).json({ tasks: allTasks });
+    const userId = req.user.id;
+    const allTasks = await Task.findAll({ where: { userId } });
+    return sendResponse(res, 200, true, "Tasks fetched successfully", allTasks);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return sendResponse(res, 500, false, error.message);
   }
 };
 
-const deleteTaskController = async (req, res) => {
+const getTaskByIdController = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!id) {
-      res.status(400).json({ message: "Task ID is required" });
-    }
-    const taskExists = await Task.findOne({ where: { id } });
-    console.log(taskExists, "taskExists");
-    if (taskExists) {
-      const isDeleted = await Task.destroy({
-        where: {
-          id,
-        },
-      });
-      console.log(isDeleted, "isDeleted");
-      res.status(200).json({ message: "Task deleted successfully" });
-    } else {
-      res.status(404).json({ message: `Task with ID: ${id} doesn't exists` });
-    }
+    const userId = req.user.id;
+    if (!id) return sendResponse(res, 400, false, "Task ID is required");
+
+    const task = await Task.findOne({ where: { id, userId } });
+    if (!task) return sendResponse(res, 404, false, "Task not found");
+
+    return sendResponse(res, 200, true, "Task fetched successfully", task);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return sendResponse(res, 500, false, error.message);
   }
 };
 
 const updateTaskController = async (req, res) => {
   try {
     const { id, title, description, status } = req.body;
-    if (!id) {
-      res.status(400).json({ message: "ID is required" });
-    }
-    const updatedTask = await Task.update(
+    const userId = req.user.id;
+
+    if (!id) return sendResponse(res, 400, false, "Task ID is required");
+
+    const [updatedCount] = await Task.update(
       { title, description, status },
-      { where: { id } }
+      { where: { id, userId } }
     );
-    if (updatedTask)
-      res.status(200).json({ message: "Task updated successfully" });
+
+    if (updatedCount === 0)
+      return sendResponse(res, 404, false, "Task not found");
+
+    return sendResponse(res, 200, true, "Task updated successfully");
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return sendResponse(res, 500, false, error.message);
+  }
+};
+
+const deleteTaskController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    if (!id) return sendResponse(res, 400, false, "Task ID is required");
+
+    const deletedCount = await Task.destroy({ where: { id, userId } });
+
+    if (deletedCount === 0)
+      return sendResponse(res, 404, false, "Task not found");
+
+    return sendResponse(res, 200, true, "Task deleted successfully");
+  } catch (error) {
+    return sendResponse(res, 500, false, error.message);
   }
 };
 
 module.exports = {
   createTaskController,
   getAllTasksController,
-  deleteTaskController,
+  getTaskByIdController,
   updateTaskController,
+  deleteTaskController,
 };
