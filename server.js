@@ -26,6 +26,8 @@ app.use("/auth", authRoutes);
 app.use("/ping", pingRoutes);
 app.use("/task", taskRoutes);
 
+console.log("DB HOST:", process.env.DB_HOST);
+
 sequelize
   .sync({ alter: true })
   .then(() => {
